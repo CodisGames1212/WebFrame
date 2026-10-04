@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://o2ntp26wlxnh"]
+
+[ext_resource type="Script" uid="uid://s743vjqmcf7f" path="res://addons/webframe/demo/demo_scene.gd" id="1_4cgkc"]
+
+[node name="DemoScene" type="Control" unique_id=1630135579]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_4cgkc")

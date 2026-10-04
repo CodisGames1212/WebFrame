@@ -1,0 +1,13 @@
+.godot/
+.vscode/
+/android/
+/dist/
+build*/
+!build_profile.json
+.gradle/
+local.properties
+addons/webframe/bin/
+*.import
+*.log
+__pycache__/
+*.rar

@@ -1,0 +1,129 @@
+# Adapted from nikoladevelops/godot-plus-plus: platform matrix + merged addon artifact.
+name: Build WebFrame
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {platform: windows, arch: x86_64, os: windows-2022, generator: x64}
+          - {platform: windows, arch: x86_32, os: windows-2022, generator: Win32}
+          - {platform: windows, arch: arm64, os: windows-2022, generator: ARM64}
+          - {platform: macos, arch: universal, os: macos-14}
+          - {platform: linux, arch: x86_64, os: ubuntu-22.04}
+          - {platform: linux, arch: arm64, os: ubuntu-22.04-arm}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux dependencies
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libx11-dev
+      - name: Configure Windows
+        if: matrix.platform == 'windows'
+        run: cmake -S addons/webframe/native -B build -A ${{ matrix.generator }}
+      - name: Configure macOS
+        if: matrix.platform == 'macos'
+        run: cmake -S addons/webframe/native -B build -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64' -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+      - name: Configure Linux
+        if: matrix.platform == 'linux'
+        run: cmake -S addons/webframe/native -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Verify macOS universal binary
+        if: matrix.platform == 'macos'
+        run: lipo -verify_arch arm64 x86_64 addons/webframe/bin/webframe.macos.universal.dylib
+      - name: Verify Linux dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          ldd addons/webframe/bin/webframe.linux.${{ matrix.arch }}.so | tee dependencies.txt
+          if grep -q 'not found' dependencies.txt; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webframe-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            addons/webframe/bin/*.dll
+            addons/webframe/bin/*.so
+            addons/webframe/bin/*.dylib
+            addons/webframe/bin/licenses/
+          if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build Android AAR
+        run: gradle -p addons/webframe/mobile/android :webframe:stagePlugin --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webframe-android
+          path: addons/webframe/bin/
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build iOS device library
+        run: bash tools/build_ios.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webframe-ios
+          path: |
+            addons/webframe/bin/*.dylib
+            addons/webframe/bin/licenses/
+          if-no-files-found: error
+
+  package:
+    needs: [native, android, ios]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: webframe-*
+          path: addons/webframe/bin/
+          merge-multiple: true
+      - name: Package addon
+        run: python tools/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WebFrame-all-platforms
+          path: dist/WebFrame-all-platforms.zip
+          if-no-files-found: error
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/WebFrame-all-platforms.zip --generate-notes

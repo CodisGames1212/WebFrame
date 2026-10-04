@@ -1,0 +1,13 @@
+[configuration]
+entry_symbol = "webframe_library_init"
+compatibility_minimum = "4.4"
+reloadable = false
+
+[libraries]
+windows.x86_64 = "res://addons/webframe/bin/webframe.windows.x86_64.dll"
+windows.arm64 = "res://addons/webframe/bin/webframe.windows.arm64.dll"
+windows.x86_32 = "res://addons/webframe/bin/webframe.windows.x86_32.dll"
+macos = "res://addons/webframe/bin/webframe.macos.universal.dylib"
+linux.x86_64 = "res://addons/webframe/bin/webframe.linux.x86_64.so"
+linux.arm64 = "res://addons/webframe/bin/webframe.linux.arm64.so"
+ios.arm64 = "res://addons/webframe/bin/webframe.ios.arm64.dylib"
