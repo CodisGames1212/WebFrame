@@ -8,7 +8,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 include(FetchContent)
 set(GODOTCPP_PRECISION single CACHE STRING "" FORCE)
 set(GODOTCPP_BUILD_PROFILE "${CMAKE_CURRENT_SOURCE_DIR}/build_profile.json" CACHE FILEPATH "" FORCE)
-FetchContent_Declare(godot_cpp GIT_REPOSITORY https://github.com/godotengine/godot-cpp.git GIT_TAG godot-4.4-stable GIT_SHALLOW TRUE)
+FetchContent_Declare(godot_cpp
+    GIT_REPOSITORY https://github.com/godotengine/godot-cpp.git
+    GIT_TAG godot-4.4-stable GIT_SHALLOW TRUE
+    PATCH_COMMAND ${CMAKE_COMMAND} "-DGODOT_CPP_SOURCE=<SOURCE_DIR>"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/patch_godot_cpp.cmake")
 FetchContent_MakeAvailable(godot_cpp)
 add_library(webframe SHARED src/backend.cpp)
 target_link_libraries(webframe PRIVATE godot-cpp::template_release)
